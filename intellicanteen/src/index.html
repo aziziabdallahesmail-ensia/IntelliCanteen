@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title data-translate="app_title">IntelliCanteen Forecast Studio</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Chart.js CDN for stunning dashboard visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <!-- Ambient Background Decorative Orbs -->
+    <div class="ambient" aria-hidden="true">
+      <span class="orb orb--one"></span>
+      <span class="orb orb--two"></span>
+      <span class="orb orb--three"></span>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main">
+      <!-- Topbar Header -->
+      <header class="topbar">
+        <div class="topbar__title" data-translate="topbar_title">IntelliCanteen Forecast Studio</div>
+        <div class="topbar__actions">
+          <!-- Trilingual Switcher -->
+          <div class="lang-switcher">
+            <div class="lang-switcher__icon">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-.1-8.716-.247m0 0A8.955 8.955 0 013 9c0-.528.046-1.045.135-1.548m0 0a8.954 8.954 0 018.716-6.747m0 0c1.39 0 2.67.393 3.766 1.077m-12.482 0a8.959 8.959 0 018.716 5.67"></path>
+              </svg>
+            </div>
+            <button class="lang-switcher__btn lang-switcher__btn--active" id="btn-en" data-lang="en">EN</button>
+            <button class="lang-switcher__btn" id="btn-fr" data-lang="fr">FR</button>
+            <button class="lang-switcher__btn" id="btn-ar" data-lang="ar">العربية</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content Grid -->
+      <main class="content">
+        <!-- Overview Stats Row -->
+        <section class="stats-row reveal" style="--d: 0.1s">
+          <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--amber">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"></path>
+              </svg>
+            </div>
+            <div>
+              <div class="stat-card__label" data-translate="stat_breakfast">Breakfast Forecast</div>
+              <div class="stat-card__value" id="stat-breakfast">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--teal">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m9-9H3M18.75 6.75l-13.5 10.5M5.25 6.75l13.5 10.5"></path>
+              </svg>
+            </div>
+            <div>
+              <div class="stat-card__label" data-translate="stat_lunch">Lunch Forecast</div>
+              <div class="stat-card__value" id="stat-lunch">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--blue">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"></path>
+              </svg>
+            </div>
+            <div>
+              <div class="stat-card__label" data-translate="stat_dinner">Dinner Forecast</div>
+              <div class="stat-card__value" id="stat-dinner">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--emerald">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21h8.25M12 3v18M6 8.25h12m-12 7.5h12"></path>
+              </svg>
+            </div>
+            <div>
+              <div class="stat-card__label" data-translate="stat_resto">Active Canteen</div>
+              <div class="stat-card__value" id="stat-resto" style="font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">--</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Predict Form and Results Grid -->
+        <div class="predict-grid">
+          <!-- Parameter Configuration Card -->
+          <form id="predict-form" class="card reveal" style="--d: 0.2s">
+            <div class="card__header">
+              <h2 data-translate="form_title">Parameters Studio</h2>
+            </div>
+            <div class="card__body">
+              <!-- Collapsible Section 1: Restaurant and Date -->
+              <section class="form-section">
+                <div class="form-section__header" id="header-resto">
+                  <div class="form-section__title">
+                    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"></path>
+                    </svg>
+                    <span data-translate="sec_resto">Restaurant &amp; Date</span>
+                  </div>
+                  <button type="button" class="form-section__toggle" aria-label="Toggle section">
+                    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div class="form-section__content" id="content-resto">
+                  <div class="field-row">
+                    <div class="field">
+                      <label class="field__label">
+                        <span data-translate="lbl_resto_name">Restaurant name</span>
+                      </label>
+                      <input
+                        id="resto-name"
+                        name="resto_name"
+                        list="resto-list"
+                        placeholder="ANON_0035909ef97c"
+                        class="field__input"
+                        required
+                      />
+                      <datalist id="resto-list"></datalist>
+                      <span class="field__hint" data-translate="hint_resto">Start typing to see known restaurants.</span>
+                    </div>
+                    <div class="field">
+                      <label class="field__label">
+                        <span data-translate="lbl_dou_code">Dou code</span>
+                      </label>
+                      <input
+                        id="dou-code"
+                        name="dou_code"
+                        list="dou-list"
+                        placeholder="301"
+                        class="field__input"
+                        required
+                      />
+                      <datalist id="dou-list"></datalist>
+                    </div>
+                  </div>
+                   <div class="field" style="margin-top: 14px;">
+                     <label class="field__label">
+                       <span data-translate="lbl_date">Forecast date</span>
+                     </label>
+                     <input id="forecast-date" type="date" class="field__input" required />
+                     <span class="field__hint" data-translate="hint_weekend">Weekend logic matches training: Friday and Saturday are treated as weekend.</span>
+                   </div>
+               </section>
+
+              <!-- Collapsible Section 2: Menu Category Mix -->
+              <section class="form-section">
+                <div class="form-section__header" id="header-categories">
+                  <div class="form-section__title">
+                    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"></path>
+                    </svg>
+                    <span data-translate="sec_categories">Menu Category Mix</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <button type="button" class="btn ghost btn--danger-ghost" id="reset-categories" style="height: 28px; padding: 0 10px; font-size: 0.72rem; border-radius: var(--r-sm);" data-translate="btn_reset_categories">
+                      Set all to 0
+                    </button>
+                    <button type="button" class="form-section__toggle" aria-label="Toggle section">
+                      <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="form-section__content" id="content-categories">
+                  <div class="category-grid">
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_bread" title="Bread & Bakery">Bread &amp; Bakery</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Bread & Bakery" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_rice" title="Rice & Pasta">Rice &amp; Pasta</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Rice & Pasta" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_legumes" title="Legumes">Legumes</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Legumes" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_poultry" title="Poultry">Poultry</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Poultry" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_red_meat" title="Red Meat">Red Meat</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Red Meat" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_fish" title="Fish & Seafood">Fish &amp; Seafood</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Fish & Seafood" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_eggs" title="Eggs">Eggs</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Eggs" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_dairy" title="Dairy & Cheese">Dairy &amp; Cheese</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Dairy & Cheese" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_vegetables" title="Vegetables & Salads">Vegetables &amp; Salads</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Vegetables & Salads" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_soups" title="Soups & Broths">Soups &amp; Broths</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Soups & Broths" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_cooked" title="Cooked Dishes & Stews">Cooked Dishes &amp; Stews</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Cooked Dishes & Stews" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_potato" title="Potato Dishes">Potato Dishes</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Potato Dishes" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_fruits" title="Fruits">Fruits</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Fruits" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_sweets" title="Sweets & Desserts">Sweets &amp; Desserts</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Sweets & Desserts" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_beverages" title="Beverages">Beverages</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Beverages" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                    <div class="mini-field">
+                      <span class="mini-field__label" data-translate="cat_condiments" title="Condiments & Spreads">Condiments &amp; Spreads</span>
+                      <div class="mini-field__control">
+                        <input type="range" min="0" max="10" step="1" value="0" class="mini-field__range" data-group="category" data-field="Condiments & Spreads" />
+                        <span class="mini-field__value">0</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Collapsible Section 3: Recent Demand -->
+              <section class="form-section">
+                <div class="form-section__header" id="header-lags">
+                  <div class="form-section__title">
+                    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span data-translate="sec_demand">Recent Demand (Actual Counts)</span>
+                  </div>
+                  <button type="button" class="form-section__toggle" aria-label="Toggle section">
+                    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div class="form-section__content" id="content-lags">
+                  <div class="lag-grid">
+                    <!-- Breakfast Lags -->
+                    <div class="lag-card">
+                      <h3>
+                        <span class="lag-emoji">🥐</span>
+                        <span data-translate="lag_breakfast">Breakfast</span>
+                      </h3>
+                      <div class="mini-field">
+                        <span class="mini-field__label" data-translate="lag_last_day">Last day</span>
+                        <input type="number" min="0" step="1" value="0" class="mini-field__input" data-group="lag" data-field="breakfast_last_day" />
+                      </div>
+                      <div class="mini-field">
+                        <span class="mini-field__label" data-translate="lag_last_week">Last week</span>
+                        <input type="number" min="0" step="1" value="0" class="mini-field__input" data-group="lag" data-field="breakfast_last_week" />
+                      </div>
+                      <div class="mini-field">
+                        <span class="mini-field__label" data-translate="lag_avg">Average previous</span>
+                        <input type="number" min="0" step="1" value="0" class="mini-field__input" data-group="lag" data-field="breakfast_avg_previous" />
+                      </div>
+                    </div>
+                    <!-- Lunch Lags -->
+                    <div class="lag-card">
+                      <h3>
+                        <span class="lag-emoji">🍲</span>
+                        <span data-translate="lag_lunch">Lunch</span>
+                      </h3>
+                      <div class="mini-field">
+                        <span class="mini-field__label" data-translate="lag_last_day">Last day</span>
+                        <input type="number" min="0" step="1" value="0" class="mini-field__input" data-group="lag" data-field="launch_last_day" />
+                      </div>
+                      <div class="mini-field">
+                        <span class="mini-field__label" data-translate="lag_last_week">Last week</span>
+                        <input type="number" min="0" step="1" value="0" class="mini-field__input" data-group="lag" data-field="launch_last_week" />
+                      </div>
+                      <div class="mini-field">
+                        <span class="mini-field__label" data-translate="lag_avg">Average previous</span>
+                        <input type="number" min="0" step="1" value="0" class="mini-field__input" data-group="lag" data-field="launch_avg_previous" />
+                      </div>
+                    </div>
+                    <!-- Dinner Lags -->
+                    <div class="lag-card">
+                      <h3>
+                        <span class="lag-emoji">🍛</span>
+                        <span data-translate="lag_dinner">Dinner</span>
+                      </h3>
+                      <div class="mini-field">
+                        <span class="mini-field__label" data-translate="lag_last_day">Last day</span>
+                        <input type="number" min="0" step="1" value="0" class="mini-field__input" data-group="lag" data-field="dinner_last_day" />
+                      </div>
+                      <div class="mini-field">
+                        <span class="mini-field__label" data-translate="lag_last_week">Last week</span>
+                        <input type="number" min="0" step="1" value="0" class="mini-field__input" data-group="lag" data-field="dinner_last_week" />
+                      </div>
+                      <div class="mini-field">
+                        <span class="mini-field__label" data-translate="lag_avg">Average previous</span>
+                        <input type="number" min="0" step="1" value="0" class="mini-field__input" data-group="lag" data-field="dinner_avg_previous" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+            <div class="card__body" style="padding-top: 0;">
+              <!-- Actions -->
+              <div class="form-actions">
+                <button type="button" class="btn btn--ghost" id="fill-sample" data-translate="btn_fill_sample">Fill sample</button>
+                <button type="submit" class="btn btn--primary" id="predict-btn">
+                  <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 21l8.982-11.825a.9.9 0 00-.73-1.426H14.25V3L5.27 14.825a.9.9 0 00.73 1.425h4.813z"></path>
+                  </svg>
+                  <span id="predict-btn-text" data-translate="btn_predict">Predict demand</span>
+                </button>
+              </div>
+              <div class="status-msg" id="status" role="status" aria-live="polite"></div>
+            </div>
+          </form>
+
+          <!-- Analytical Results Panel -->
+          <div class="results-panel reveal" style="--d: 0.3s">
+            <aside class="card" style="height: 100%; display: flex; flex-direction: column;">
+              <div class="card__header">
+                <div>
+                  <h2 data-translate="results_title">Forecast Results</h2>
+                  <p class="hint" style="font-size: 0.72rem; color: var(--gray-400); margin-top: 2px;" data-translate="results_hint">Counts are shown on the original scale.</p>
+                </div>
+              </div>
+              <div class="card__body" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="result-metrics">
+                  <div class="result-card result-card--breakfast" id="card-breakfast">
+                    <div class="result-card__label" data-translate="res_breakfast">Breakfast</div>
+                    <div class="result-card__value" id="result-breakfast">--</div>
+                    <div class="result-card__unit" data-translate="res_meals">meals</div>
+                  </div>
+                  <div class="result-card result-card--lunch" id="card-lunch">
+                    <div class="result-card__label" data-translate="res_lunch">Lunch</div>
+                    <div class="result-card__value" id="result-launch">--</div>
+                    <div class="result-card__unit" data-translate="res_meals">meals</div>
+                  </div>
+                  <div class="result-card result-card--dinner" id="card-dinner">
+                    <div class="result-card__label" data-translate="res_dinner">Dinner</div>
+                    <div class="result-card__value" id="result-dinner">--</div>
+                    <div class="result-card__unit" data-translate="res_meals">meals</div>
+                  </div>
+                </div>
+
+                <!-- Dynamic Comparison Visualisation -->
+                <div class="chart-container" style="flex: 1; min-height: 220px;">
+                  <canvas id="forecast-chart"></canvas>
+                </div>
+
+                <details class="raw-output">
+                  <summary data-translate="raw_summary">View log-scale output</summary>
+                  <pre id="raw-output" data-translate="raw_waiting">Awaiting prediction...</pre>
+                </details>
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        <!-- Additional Graphs Row -->
+        <section class="charts-row reveal" style="--d: 0.4s">
+          <div class="card chart-card">
+            <div class="card__header">
+              <h2 data-translate="chart_menu_title">Menu Category Distribution</h2>
+            </div>
+            <div class="card__body">
+              <canvas id="menu-chart"></canvas>
+            </div>
+          </div>
+          <div class="card chart-card">
+            <div class="card__header">
+              <h2 data-translate="chart_trend_title">Recent Demand &amp; Forecast Trend</h2>
+            </div>
+            <div class="card__body">
+              <canvas id="trend-chart"></canvas>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- UI Interaction and Data Binding Script -->
+    <script src="app.js"></script>
+  </body>
+</html>
