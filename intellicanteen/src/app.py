@@ -7,9 +7,9 @@ inputs = [gr.Dataframe(row_count = (2, "dynamic"), col_count=(4,"dynamic"), labe
 
 outputs = [gr.Dataframe(row_count = (2, "dynamic"), col_count=(1, "fixed"), label="Predictions", headers=["Failures"])]
 
-model = joblib.load("") #model path
+model = joblib.load("../models/model.pkl") #model path
 
-df = datasets.load_dataset("")
+df = datasets.load_dataset("../data/processed/processed_data.csv")
 df = df["train"].to_pandas()
 
 def infer(input_dataframe):
