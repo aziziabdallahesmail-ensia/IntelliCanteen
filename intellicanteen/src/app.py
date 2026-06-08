@@ -5,6 +5,8 @@ import csv
 import math
 import sys
 from datetime import datetime
+
+import numpy as np
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
@@ -91,6 +93,7 @@ def get_model():
 
 _restaurants = None
 _dou_codes = None
+_processed_df = None
 
 
 def load_metadata(limit: int = 10000) -> Tuple[list[str], list[str], bool, str | None]:
@@ -137,6 +140,36 @@ def get_restaurants(limit: int = 10000) -> Tuple[list[str], bool, str | None]:
 def get_dou_codes(limit: int = 10000) -> Tuple[list[str], bool, str | None]:
     _, codes, truncated, warning = load_metadata(limit)
     return codes, truncated, warning
+
+
+def get_processed_data():
+    """Load and cache the processed DataFrame with reconstructed dates."""
+    global _processed_df
+    if _processed_df is not None:
+        return _processed_df
+
+    if not DATA_PATH.exists():
+        return None
+
+    needed_cols = [
+        "resto_name", "breakfast", "launch", "dinner",
+        *LAG_COLUMNS,
+        "month", "year", "day_of_month_sin", "day_of_month_cos",
+    ]
+    df = pd.read_csv(DATA_PATH, usecols=needed_cols)
+
+    # Reconstruct day_of_month from sin/cos encoding
+    angle = np.arctan2(df["day_of_month_sin"], df["day_of_month_cos"])
+    angle = np.where(angle < 0, angle + 2 * np.pi, angle)
+    day = np.round(angle * 31 / (2 * np.pi)).astype(int)
+    day = np.clip(np.where(day == 0, 31, day), 1, 31)
+
+    df["day"] = day
+    df["date"] = pd.to_datetime(df[["year", "month", "day"]], errors="coerce")
+    df = df.dropna(subset=["date"])
+
+    _processed_df = df
+    return _processed_df
 
 
 
@@ -268,6 +301,72 @@ def dou_codes():
     if warning:
         payload["warning"] = warning
     return jsonify(payload)
+
+
+@app.route("/api/demand_history", methods=["GET"])
+def demand_history():
+    """Return demand time-series and lag values for a restaurant + date."""
+    resto_name = request.args.get("resto_name", "").strip()
+    date_str = request.args.get("date", "").strip()
+
+    if not resto_name:
+        return jsonify({"error": "resto_name is required"}), 400
+
+    df = get_processed_data()
+    if df is None:
+        return jsonify({"error": "Processed data not available"}), 500
+
+    df_resto = df[df["resto_name"] == resto_name]
+    if df_resto.empty:
+        return jsonify({"error": "Restaurant not found in dataset"}), 404
+
+    # Take first row per date and sort chronologically
+    df_unique = (
+        df_resto.drop_duplicates(subset=["date"], keep="first")
+        .sort_values("date")
+        .reset_index(drop=True)
+    )
+
+    # Build time-series with actual (expm1) values
+    ts = df_unique[["date", "breakfast", "launch", "dinner"]].copy()
+    ts["date"] = ts["date"].dt.strftime("%Y-%m-%d")
+    ts["breakfast"] = np.maximum(0, np.expm1(ts["breakfast"])).round(1)
+    ts["launch"] = np.maximum(0, np.expm1(ts["launch"])).round(1)
+    ts["dinner"] = np.maximum(0, np.expm1(ts["dinner"])).round(1)
+    time_series = ts.to_dict(orient="records")
+
+    # Determine lag values for the requested date
+    warning = None
+    lags: Dict[str, float] = {}
+
+    if date_str:
+        try:
+            target_date = pd.Timestamp(date_str)
+            max_date = df_unique["date"].max()
+            min_date = df_unique["date"].min()
+
+            if target_date > max_date:
+                warning = (
+                    f"Date {date_str} is beyond available data "
+                    f"(last: {max_date.strftime('%Y-%m-%d')}). "
+                    f"Using last available data."
+                )
+                lag_row = df_unique.iloc[-1]
+            elif target_date < min_date:
+                lag_row = df_unique.iloc[0]
+            else:
+                mask = df_unique["date"] <= target_date
+                lag_row = df_unique[mask].iloc[-1] if mask.any() else df_unique.iloc[0]
+
+            for col in LAG_COLUMNS:
+                lags[col] = round(max(0.0, math.expm1(float(lag_row[col]))), 1)
+        except (ValueError, TypeError):
+            pass
+
+    result: Dict[str, Any] = {"time_series": time_series, "lags": lags}
+    if warning:
+        result["warning"] = warning
+    return jsonify(result)
 
 
 if __name__ == "__main__":

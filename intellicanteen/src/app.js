@@ -30,15 +30,20 @@ const hamburgerBtn = document.getElementById("hamburger-btn");
 const sidebar = document.getElementById("sidebar");
 const overlay = document.getElementById("sidebar-overlay");
 
-// Category and Lag inputs
+// Demand Warning Elements
+const demandWarning = document.getElementById("demand-warning");
+const demandWarningText = document.getElementById("demand-warning-text");
+
+// Category and Lag display elements
 const categoryInputs = document.querySelectorAll("[data-group='category']");
-const lagInputs = document.querySelectorAll("[data-group='lag']");
+const lagDisplays = document.querySelectorAll("[data-group='lag']");
 
 // State
 let currentLang = localStorage.getItem("intellicanteen_lang") || "en";
 let forecastChart = null;
-let menuChart = null;
-let trendChart = null;
+let demandEvolutionChart = null;
+let currentLags = {};
+let demandFetchTimer = null;
 
 // Categories list in exact ordering
 const CATEGORIES = [
@@ -82,17 +87,6 @@ const samplePayload = {
     "Sweets & Desserts": 0,
     Beverages: 1,
     "Condiments & Spreads": 0
-  },
-  lags: {
-    breakfast_last_day: 8,
-    breakfast_last_week: 10,
-    breakfast_avg_previous: 9,
-    launch_last_day: 32,
-    launch_last_week: 35,
-    launch_avg_previous: 30,
-    dinner_last_day: 14,
-    dinner_last_week: 16,
-    dinner_avg_previous: 15
   }
 };
 
@@ -138,8 +132,7 @@ const translations = {
     res_meals: "meals",
     raw_summary: "View log-scale output",
     raw_waiting: "Awaiting prediction...",
-    chart_menu_title: "Menu Category Distribution",
-    chart_trend_title: "Recent Demand & Forecast Trend",
+    chart_demand_evolution: "Demand Evolution",
     err_fill_fields: "Please fill restaurant name, dou code, and date.",
     msg_ready: "Prediction ready.",
     msg_restos_fail: "Could not load restaurant list",
@@ -210,8 +203,7 @@ const translations = {
     res_meals: "repas",
     raw_summary: "Afficher la sortie log",
     raw_waiting: "En attente de prévision...",
-    chart_menu_title: "Distribution des Catégories du Menu",
-    chart_trend_title: "Demande Récente & Tendance des Prévisions",
+    chart_demand_evolution: "Évolution de la Demande",
     err_fill_fields: "Veuillez remplir le nom du restaurant, le code DOU et la date.",
     msg_ready: "Prévision prête.",
     msg_restos_fail: "Impossible de charger la liste des restaurants",
@@ -282,8 +274,7 @@ const translations = {
     res_meals: "وجبات",
     raw_summary: "عرض مخرجات المقياس اللوغاريتمي",
     raw_waiting: "في انتظار التوقعات...",
-    chart_menu_title: "توزيع فئات قائمة الطعام",
-    chart_trend_title: "الطلب الأخير وتوجهات التوقع",
+    chart_demand_evolution: "تطور الطلب",
     err_fill_fields: "يرجى ملء اسم المطعم، رمز DOU، والتاريخ.",
     msg_ready: "التوقع جاهز.",
     msg_restos_fail: "فشل تحميل قائمة المطاعم",
@@ -394,7 +385,6 @@ function switchLanguage(lang) {
 
   // Re-draw Charts with translated titles/labels
   updateChartLabels();
-
 }
 
 function setupLanguageSwitcher() {
@@ -418,7 +408,7 @@ function initCharts() {
   Chart.defaults.font.family = "inherit";
   Chart.defaults.color = "var(--gray-500)";
 
-  // 1. Forecast Comparison Chart
+  // 1. Forecast Comparison Chart (bar)
   const forecastCtx = document.getElementById("forecast-chart").getContext("2d");
   forecastChart = new Chart(forecastCtx, {
     type: "bar",
@@ -467,90 +457,46 @@ function initCharts() {
     }
   });
 
-  // 2. Menu Category radar mix Chart
-  const menuCtx = document.getElementById("menu-chart").getContext("2d");
-  menuChart = new Chart(menuCtx, {
-    type: "radar",
-    data: {
-      labels: CATEGORIES.map(cat => {
-        // Find translation key matching index.html mapping
-        const key = getCategoryTranslationKey(cat);
-        return translations[currentLang][key] || cat;
-      }),
-      datasets: [
-        {
-          label: currentLang === "ar" ? "نسبة الفئة في القائمة" : (currentLang === "fr" ? "Proportion Menu" : "Menu Share"),
-          data: Array(CATEGORIES.length).fill(0),
-          backgroundColor: "rgba(0, 150, 136, 0.15)",
-          borderColor: "rgba(0, 150, 136, 0.8)",
-          pointBackgroundColor: "#009688",
-          pointBorderColor: "#fff",
-          pointHoverBackgroundColor: "#fff",
-          pointHoverBorderColor: "#009688",
-          borderWidth: 2.5
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        r: {
-          grid: { color: "var(--gray-200)" },
-          angleLines: { color: "var(--gray-200)" },
-          suggestedMin: 0,
-          suggestedMax: 3,
-          ticks: { backdropColor: "transparent", color: "var(--gray-400)" }
-        }
-      }
-    }
-  });
-
-  // 3. Recent Demand and Forecast Trend Chart
-  const trendCtx = document.getElementById("trend-chart").getContext("2d");
-  trendChart = new Chart(trendCtx, {
+  // 2. Demand Evolution Chart (line)
+  const demandCtx = document.getElementById("demand-evolution-chart").getContext("2d");
+  demandEvolutionChart = new Chart(demandCtx, {
     type: "line",
     data: {
-      labels: [
-        translations[currentLang].lag_avg,
-        translations[currentLang].lag_last_week,
-        translations[currentLang].lag_last_day,
-        currentLang === "ar" ? "التوقعات" : (currentLang === "fr" ? "Prévision" : "Forecast")
-      ],
+      labels: [],
       datasets: [
         {
           label: translations[currentLang].lag_breakfast,
-          data: [0, 0, 0, 0],
+          data: [],
           borderColor: "#FF9800",
           backgroundColor: "rgba(255, 152, 0, 0.05)",
-          tension: 0.35,
-          borderWidth: 3,
-          pointRadius: 4,
+          tension: 0.3,
+          borderWidth: 2,
+          pointRadius: 1.5,
+          pointHoverRadius: 5,
           pointBackgroundColor: "#FF9800",
           fill: true
         },
         {
           label: translations[currentLang].lag_lunch,
-          data: [0, 0, 0, 0],
+          data: [],
           borderColor: "#009688",
           backgroundColor: "rgba(0, 150, 136, 0.05)",
-          tension: 0.35,
-          borderWidth: 3,
-          pointRadius: 4,
+          tension: 0.3,
+          borderWidth: 2,
+          pointRadius: 1.5,
+          pointHoverRadius: 5,
           pointBackgroundColor: "#009688",
           fill: true
         },
         {
           label: translations[currentLang].lag_dinner,
-          data: [0, 0, 0, 0],
+          data: [],
           borderColor: "#1E88E5",
           backgroundColor: "rgba(30, 136, 229, 0.05)",
-          tension: 0.35,
-          borderWidth: 3,
-          pointRadius: 4,
+          tension: 0.3,
+          borderWidth: 2,
+          pointRadius: 1.5,
+          pointHoverRadius: 5,
           pointBackgroundColor: "#1E88E5",
           fill: true
         }
@@ -560,49 +506,45 @@ function initCharts() {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: "top" }
+        legend: { position: "top" },
+        tooltip: {
+          padding: 12,
+          cornerRadius: 8,
+          mode: "index",
+          intersect: false
+        }
       },
       scales: {
-        x: { grid: { display: false } },
+        x: {
+          grid: { display: false },
+          ticks: {
+            maxRotation: 45,
+            maxTicksLimit: 20,
+            font: { size: 10 }
+          }
+        },
         y: {
           border: { dash: [4, 4] },
           grid: { color: "var(--gray-200)" },
-          beginAtZero: true
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Meals",
+            font: { size: 11, weight: "600" },
+            color: "var(--gray-500)"
+          }
         }
+      },
+      interaction: {
+        mode: "index",
+        intersect: false
       }
     }
   });
-
-  // Listen to input changes in Category grids to update Radar Mix instantly
-  categoryInputs.forEach((input) => {
-    input.addEventListener("input", updateMenuChartFromInputs);
-  });
-}
-
-function getCategoryTranslationKey(cat) {
-  const map = {
-    "Bread & Bakery": "cat_bread",
-    "Rice & Pasta": "cat_rice",
-    "Legumes": "cat_legumes",
-    "Poultry": "cat_poultry",
-    "Red Meat": "cat_red_meat",
-    "Fish & Seafood": "cat_fish",
-    "Eggs": "cat_eggs",
-    "Dairy & Cheese": "cat_dairy",
-    "Vegetables & Salads": "cat_vegetables",
-    "Soups & Broths": "cat_soups",
-    "Cooked Dishes & Stews": "cat_cooked",
-    "Potato Dishes": "cat_potato",
-    "Fruits": "cat_fruits",
-    "Sweets & Desserts": "cat_sweets",
-    "Beverages": "cat_beverages",
-    "Condiments & Spreads": "cat_condiments"
-  };
-  return map[cat] || "";
 }
 
 function updateChartLabels() {
-  if (!forecastChart || !menuChart || !trendChart) return;
+  if (!forecastChart) return;
 
   // Update Forecast Chart labels
   forecastChart.data.labels = [
@@ -612,85 +554,92 @@ function updateChartLabels() {
   ];
   forecastChart.update();
 
-  // Update Menu Chart labels
-  menuChart.data.labels = CATEGORIES.map(cat => {
-    const key = getCategoryTranslationKey(cat);
-    return translations[currentLang][key] || cat;
-  });
-  menuChart.data.datasets[0].label = currentLang === "ar" ? "نسبة الفئة في القائمة" : (currentLang === "fr" ? "Proportion Menu" : "Menu Share");
-  menuChart.update();
-
-  // Update Trend Chart labels & legends
-  trendChart.data.labels = [
-    translations[currentLang].lag_avg,
-    translations[currentLang].lag_last_week,
-    translations[currentLang].lag_last_day,
-    currentLang === "ar" ? "التوقعات" : (currentLang === "fr" ? "Prévision" : "Forecast")
-  ];
-  trendChart.data.datasets[0].label = translations[currentLang].lag_breakfast;
-  trendChart.data.datasets[1].label = translations[currentLang].lag_lunch;
-  trendChart.data.datasets[2].label = translations[currentLang].lag_dinner;
-  trendChart.update();
+  // Update Demand Evolution Chart legends
+  if (demandEvolutionChart) {
+    demandEvolutionChart.data.datasets[0].label = translations[currentLang].lag_breakfast;
+    demandEvolutionChart.data.datasets[1].label = translations[currentLang].lag_lunch;
+    demandEvolutionChart.data.datasets[2].label = translations[currentLang].lag_dinner;
+    demandEvolutionChart.update();
+  }
 }
 
-function updateMenuChartFromInputs() {
-  const datasetData = CATEGORIES.map((cat) => {
-    const input = document.querySelector(`[data-field="${cat}"]`);
-    if (input) {
-      updateCategoryValueDisplay(input);
-      return getNumber(input);
+/* ==========================================================
+   Demand History Fetching & Display
+   ========================================================== */
+function debouncedFetchDemandHistory() {
+  if (demandFetchTimer) clearTimeout(demandFetchTimer);
+  demandFetchTimer = setTimeout(() => {
+    const restoName = restoInput ? restoInput.value.trim() : "";
+    const dateVal = forecastDateInput ? forecastDateInput.value : "";
+    if (restoName && dateVal) {
+      fetchDemandHistory(restoName, dateVal);
     }
-    return 0;
+  }, 400);
+}
+
+async function fetchDemandHistory(restoName, dateStr) {
+  // Clear warning
+  if (demandWarning) demandWarning.classList.remove("visible");
+
+  try {
+    const params = new URLSearchParams({ resto_name: restoName, date: dateStr });
+    const response = await fetch(`/api/demand_history?${params}`);
+
+    if (!response.ok) {
+      // Restaurant not found or other error — reset lag displays
+      resetLagDisplays();
+      clearDemandEvolutionChart();
+      return;
+    }
+
+    const data = await response.json();
+
+    // Show warning if future date
+    if (data.warning && demandWarning && demandWarningText) {
+      demandWarningText.textContent = data.warning;
+      demandWarning.classList.add("visible");
+    }
+
+    // Update lag value displays
+    currentLags = data.lags || {};
+    lagDisplays.forEach((el) => {
+      const field = el.getAttribute("data-field");
+      if (currentLags[field] !== undefined) {
+        el.textContent = Math.round(currentLags[field]).toLocaleString();
+        el.classList.add("has-data");
+      } else {
+        el.textContent = "--";
+        el.classList.remove("has-data");
+      }
+    });
+
+    // Update demand evolution chart
+    const timeSeries = data.time_series || [];
+    if (demandEvolutionChart && timeSeries.length > 0) {
+      demandEvolutionChart.data.labels = timeSeries.map(p => p.date);
+      demandEvolutionChart.data.datasets[0].data = timeSeries.map(p => p.breakfast);
+      demandEvolutionChart.data.datasets[1].data = timeSeries.map(p => p.launch);
+      demandEvolutionChart.data.datasets[2].data = timeSeries.map(p => p.dinner);
+      demandEvolutionChart.update();
+    }
+  } catch (error) {
+    console.warn("Could not fetch demand history:", error);
+  }
+}
+
+function resetLagDisplays() {
+  currentLags = {};
+  lagDisplays.forEach((el) => {
+    el.textContent = "--";
+    el.classList.remove("has-data");
   });
-
-  if (!menuChart) return;
-
-  menuChart.data.datasets[0].data = datasetData;
-  menuChart.update();
 }
 
-function updateCategoryValueDisplay(input) {
-  const container = input.closest(".mini-field");
-  if (!container) return;
-  const valueEl = container.querySelector(".mini-field__value");
-  if (!valueEl) return;
-  valueEl.textContent = String(getNumber(input));
-}
-
-function updateTrendChart(forecastVals) {
-  if (!trendChart) return;
-
-  // Lags coordinates order: [Average Previous, Last Week, Last Day, Forecast]
-  const getLagVal = (field) => {
-    const el = document.querySelector(`[data-field="${field}"]`);
-    return el ? getNumber(el) : 0;
-  };
-
-  const breakfastVals = [
-    getLagVal("breakfast_avg_previous"),
-    getLagVal("breakfast_last_week"),
-    getLagVal("breakfast_last_day"),
-    forecastVals.breakfast || 0
-  ];
-
-  const lunchVals = [
-    getLagVal("launch_avg_previous"),
-    getLagVal("launch_last_week"),
-    getLagVal("launch_last_day"),
-    forecastVals.launch || 0
-  ];
-
-  const dinnerVals = [
-    getLagVal("dinner_avg_previous"),
-    getLagVal("dinner_last_week"),
-    getLagVal("dinner_last_day"),
-    forecastVals.dinner || 0
-  ];
-
-  trendChart.data.datasets[0].data = breakfastVals;
-  trendChart.data.datasets[1].data = lunchVals;
-  trendChart.data.datasets[2].data = dinnerVals;
-  trendChart.update();
+function clearDemandEvolutionChart() {
+  if (!demandEvolutionChart) return;
+  demandEvolutionChart.data.labels = [];
+  demandEvolutionChart.data.datasets.forEach(ds => { ds.data = []; });
+  demandEvolutionChart.update();
 }
 
 /* ==========================================================
@@ -777,62 +726,6 @@ function bindCanteenStatOverview() {
 }
 
 /* ==========================================================
-   Date Feature Extraction & Metadata Binding
-   ========================================================== */
-function extractDateFeatures(dateString) {
-  if (!dateString) return null;
-  const dateParts = dateString.split("-");
-  if (dateParts.length !== 3) return null;
-  
-  const year = parseInt(dateParts[0], 10);
-  const month = parseInt(dateParts[1], 10);
-  const dayOfMonth = parseInt(dateParts[2], 10);
-  
-  // Custom Date parsing to avoid timezone shift offsets in vanilla JS Date constructor
-  const dateObj = new Date(year, month - 1, dayOfMonth);
-  if (isNaN(dateObj.getTime())) return null;
-
-  // Python weekday() mapping: Monday is 0, Tuesday is 1, ..., Sunday is 6.
-  // JS getDay() mapping: Sunday is 0, Monday is 1, ..., Saturday is 6.
-  const jsDay = dateObj.getDay();
-  const pythonDayOfWeek = (jsDay + 6) % 7;
-  
-  // Friday and Saturday are treated as weekend in training/Algerian university systems
-  // (In Python dayOfWeek value 4 is Friday, 5 is Saturday)
-  const isWeekend = (pythonDayOfWeek === 4 || pythonDayOfWeek === 5) ? 1 : 0;
-  
-  const isMonthStart = dayOfMonth === 1 ? 1 : 0;
-  
-  // Check last day of month
-  const lastDayDate = new Date(year, month, 0);
-  const lastDay = lastDayDate.getDate();
-  const isMonthEnd = dayOfMonth === lastDay ? 1 : 0;
-  
-  // Trigonometric cyclical features matching CatBoost models
-  const dayOfWeekSin = Math.sin(2 * Math.PI * pythonDayOfWeek / 7);
-  const dayOfWeekCos = Math.cos(2 * Math.PI * pythonDayOfWeek / 7);
-  const dayOfMonthSin = Math.sin(2 * Math.PI * dayOfMonth / 31);
-  const dayOfMonthCos = Math.cos(2 * Math.PI * dayOfMonth / 31);
-  const monthSin = Math.sin(2 * Math.PI * month / 12);
-  const monthCos = Math.cos(2 * Math.PI * month / 12);
-  
-  return {
-    month,
-    year,
-    is_weekend: isWeekend,
-    is_month_start: isMonthStart,
-    is_month_end: isMonthEnd,
-    day_of_week_sin: dayOfWeekSin,
-    day_of_week_cos: dayOfWeekCos,
-    day_of_month_sin: dayOfMonthSin,
-    day_of_month_cos: dayOfMonthCos,
-    month_sin: monthSin,
-    month_cos: monthCos
-  };
-}
-
-
-/* ==========================================================
    General Utilities and Forms Handlers
    ========================================================== */
 function setStatus(type, message) {
@@ -846,11 +739,6 @@ function setStatus(type, message) {
   statusEl.className = `status-msg status-msg--${type}`;
 }
 
-function getNumber(input) {
-  const value = parseFloat(input.value);
-  return Number.isFinite(value) && value >= 0 ? value : 0;
-}
-
 function fillSample() {
   forecastDateInput.value = samplePayload.date;
   restoInput.value = samplePayload.resto_name;
@@ -860,38 +748,30 @@ function fillSample() {
     statResto.textContent = samplePayload.resto_name;
   }
 
+  // Set category checkboxes from sample
   categoryInputs.forEach((input) => {
     const key = input.dataset.field;
-    input.value = samplePayload.categories[key] ?? 0;
+    input.checked = (samplePayload.categories[key] ?? 0) === 1;
   });
 
-  lagInputs.forEach((input) => {
-    const key = input.dataset.field;
-    input.value = samplePayload.lags[key] ?? 0;
-  });
-
-  // Update dynamic visuals instantly on sample fill
-  updateMenuChartFromInputs();
-
+  // Trigger demand history fetch for the sample restaurant + date
+  fetchDemandHistory(samplePayload.resto_name, samplePayload.date);
 }
 
 function resetCategories() {
   categoryInputs.forEach((input) => {
-    input.value = 0;
+    input.checked = false;
   });
-  updateMenuChartFromInputs();
 }
 
 function buildPayload() {
   const categories = {};
   categoryInputs.forEach((input) => {
-    categories[input.dataset.field] = getNumber(input);
+    categories[input.dataset.field] = input.checked ? 1 : 0;
   });
 
-  const lags = {};
-  lagInputs.forEach((input) => {
-    lags[input.dataset.field] = getNumber(input);
-  });
+  // Use the auto-fetched lag values
+  const lags = { ...currentLags };
 
   return {
     date: forecastDateInput.value,
@@ -959,13 +839,11 @@ async function handleSubmit(event) {
     // Populate log-scale details code block
     rawOutput.textContent = JSON.stringify(data.predictions_log, null, 2);
 
-    // Update Chart.js representations
+    // Update Forecast Chart
     if (forecastChart) {
       forecastChart.data.datasets[0].data = [breakfastVal, launchVal, dinnerVal];
       forecastChart.update();
     }
-
-    updateTrendChart({ breakfast: breakfastVal, launch: launchVal, dinner: dinnerVal });
 
     setStatus("success", translations[currentLang].msg_ready);
   } catch (error) {
@@ -989,12 +867,16 @@ document.addEventListener("DOMContentLoaded", () => {
   loadDouCodes();
   bindCanteenStatOverview();
 
-  // Reset elements initially
+  // Button bindings
   const fillSampleButton = document.getElementById("fill-sample");
   const resetCategoriesButton = document.getElementById("reset-categories");
 
   if (fillSampleButton) fillSampleButton.addEventListener("click", fillSample);
   if (resetCategoriesButton) resetCategoriesButton.addEventListener("click", resetCategories);
+
+  // Trigger demand fetch when restaurant name or date changes
+  if (restoInput) restoInput.addEventListener("input", debouncedFetchDemandHistory);
+  if (forecastDateInput) forecastDateInput.addEventListener("change", debouncedFetchDemandHistory);
 
   form.addEventListener("submit", handleSubmit);
 });
